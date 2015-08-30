@@ -115,7 +115,7 @@ exports.User = User = rclass
             <span> (<TimeAgo date={@props.last_active} />)</span>
 
     name : (info) ->
-        return misc.trunc_middle((@props.name ? "#{info.first_name} #{info.last_name}"), 50)
+        return misc.trunc_middle((@props.name ? "#{info.first_name} #{info.last_name}".trim()), 50)
 
     render : ->
         info = @props.user_map?.get(@props.account_id)

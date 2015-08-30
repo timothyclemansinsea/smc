@@ -43,9 +43,9 @@ LogSearch = rclass
     displayName : 'ProjectLog-LogSearch'
 
     propTypes :
-        search           : rtypes.string
-        actions          : rtypes.object.isRequired
-        selected         : rtypes.object
+        search   : rtypes.string
+        actions  : rtypes.object.isRequired
+        selected : rtypes.object
 
     clear_and_focus_input : ->
         @refs.project_log_search.getInputDOMNode().focus()
@@ -55,7 +55,6 @@ LogSearch = rclass
         <Button onClick={@clear_and_focus_input}>
             <Icon name='times-circle' />
         </Button>
-
 
     do_open_selected : (e) ->
         e.preventDefault()
@@ -268,10 +267,10 @@ LogMessages = rclass
     displayName : 'ProjectLog-LogMessages'
 
     propTypes :
-        log        : rtypes.array.isRequired
-        user_map   : rtypes.object
-        cursor     : rtypes.string    # id of the cursor
-        actions    : rtypes.object.isRequired
+        log      : rtypes.array.isRequired
+        user_map : rtypes.object
+        cursor   : rtypes.string    # id of the cursor
+        actions  : rtypes.object.isRequired
 
     render_entries : ->
         for x, i in @props.log
@@ -297,7 +296,7 @@ search_string = (x, users) ->  # TODO: this code is ugly, but can be easily chan
     event = x.event
     if event?
         for k,val of event
-            if k != 'event' and k!='filename'
+            if k != 'event' and k != 'filename'
                 v.push(k)
             if k == 'type'
                 continue
@@ -438,7 +437,7 @@ ProjectLog = rclass
             cursor = undefined
             selected = undefined
 
-        <Panel head='Project activity log'>
+        <Panel>
             <Row>
                 <Col sm=4>
                     <LogSearch actions={@props.actions} search={@props.search} selected={selected} />
@@ -464,6 +463,7 @@ render = (project_id, flux) ->
     store = flux.getProjectStore(project_id)
     actions = flux.getProjectActions(project_id)
     <FluxComponent flux={flux} connectToStores={[store.name, 'users']}>
+        <h1><Icon name='history' /> Project activity log </h1>
         <ProjectLog actions={actions} />
     </FluxComponent>
 

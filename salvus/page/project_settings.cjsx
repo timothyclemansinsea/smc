@@ -137,18 +137,9 @@ UpgradeAdjustor = rclass
         e.preventDefault()
         require('history').load_target('settings/billing')
 
-    # returns the number parsed from the input text, or undefined if invalid
-    parse_upgrade_input : (input) ->
-        if isNaN(input) or "#{input}".trim() is ''
-            return undefined
-        val = misc.round1(parseFloat(input))
-        if isNaN(val) or val < 0
-            return undefined
-        return val
-
     # returns 'error' if the input is invalid or higher than max
     upgrade_input_validation_state : (input, max) ->
-        val = @parse_upgrade_input(input)
+        val = misc.parse_number_input(input)
         if not val? or val > max
             return 'error'
 
@@ -172,7 +163,7 @@ UpgradeAdjustor = rclass
         remaining = remaining * display_factor
         current = current * display_factor # current already applied
         limit = limit * display_factor
-        current_input = @parse_upgrade_input(@state["upgrade_#{name}"]) ? 0 # current typed in
+        current_input = misc.parse_number_input(@state["upgrade_#{name}"]) ? 0 # current typed in
 
         # the amount displayed remaining subtracts off the amount you type in
         show_remaining = remaining + current - current_input
@@ -194,7 +185,7 @@ UpgradeAdjustor = rclass
             </Col>
         </Row>
 
-    save_upgrade_quotas : (remaining={}) ->
+    save_upgrade_quotas : (remaining) ->
         current = @props.upgrades_you_applied_to_this_project
         new_upgrade_quotas = {}
         new_upgrade_state  = {}
@@ -213,7 +204,7 @@ UpgradeAdjustor = rclass
 
             else
                 # parse the current user input, and default to the current value if it is (somehow) invalid
-                input = @parse_upgrade_input(@state["upgrade_#{name}"]) ? current_val
+                input = misc.parse_number_input(@state["upgrade_#{name}"]) ? current_val
                 input = Math.max(misc.round1(input), 0)
                 limit = current_val + remaining_val
                 val = Math.min(input, limit)
@@ -232,7 +223,7 @@ UpgradeAdjustor = rclass
     #    - none are negative
     #    - none are empty
     #    - none are higher than their limit
-    valid_changed_upgrade_inputs : (current, limits) ->
+    valid_upgrade_inputs : (current, limits) ->
         for name, data of @props.quota_params
             factor = data?.display_factor ? 1
 
@@ -243,7 +234,7 @@ UpgradeAdjustor = rclass
             cur_val = (current[name] ? 0) * factor
 
             # the current number the user has typed (undefined if invalid)
-            new_val = @parse_upgrade_input(@state["upgrade_#{name}"])
+            new_val = misc.parse_number_input(@state["upgrade_#{name}"])
             if not new_val? or new_val > limit
                 return false
             if cur_val isnt new_val
@@ -305,7 +296,7 @@ UpgradeAdjustor = rclass
                     <Button
                         bsStyle  = 'primary'
                         onClick  = {=>@save_upgrade_quotas(remaining)}
-                        disabled = {not @valid_changed_upgrade_inputs(current, limits)}
+                        disabled = {not @valid_upgrade_inputs(current, limits)}
                     >
                         <Icon name='arrow-circle-up' /> Submit changes
                     </Button>
@@ -317,8 +308,8 @@ UpgradeAdjustor = rclass
 
     render_upgrades_button : ->
         <Row>
-            <Col sm=12>
-                <Button bsStyle='primary' style={float:'right'} onClick={@show_upgrade_quotas}>
+            <Col sm=6 smOffset=6>
+                <Button bsStyle='primary' onClick={@show_upgrade_quotas} style={float: 'right', marginBottom : '5px'}>
                     <Icon name='arrow-circle-up' /> Adjust your quotas...
                 </Button>
             </Col>
@@ -347,17 +338,15 @@ QuotaConsole = rclass
         all_upgrades_to_this_project : {}
 
     getInitialState : ->
-        settings = @props.project_settings
-        if not settings?
-            return {}
         state =
             editing   : false # admin is currently editing
             upgrading : false # user is currently upgrading
-
-        for name, data of @props.quota_params
-            base_value = settings.get(name) ? 0
-            factor = data.display_factor ? 1
-            state[name] = misc.round1(base_value * factor)
+        settings = @props.project_settings
+        if settings?
+            for name, data of @props.quota_params
+                factor = data.display_factor ? 1
+                base_value = settings.get(name) ? 0
+                state[name] = misc.round1(base_value * factor)
 
         return state
 
@@ -369,17 +358,6 @@ QuotaConsole = rclass
                 for name, data of @props.quota_params
                     new_state[name] = misc.round1(settings.get(name) * data.display_factor)
                 @setState(new_state)
-
-    identical : ->
-        settings = @props.project_settings
-        if not settings?
-            return true
-        return @state.cores   == settings.get('cores') and
-            @state.cpu_shares == settings.get('cpu_shares') / 256 and
-            @state.disk_quota == settings.get('disk_quota') and
-            @state.memory     == settings.get('memory') and
-            @state.mintime    == Math.floor(settings.get('mintime') / 3600) and
-            @state.network    == settings.get('network')
 
     render_quota_row : (quota, base_value=0, upgrades, params_data) ->
         factor = params_data.display_factor ? 1
@@ -405,74 +383,119 @@ QuotaConsole = rclass
             </ul>
         </LabeledRow>
 
-    edit : ->
-        if @state.editing
-            if not @identical()
-                salvus_client.project_set_quotas
-                    project_id : @props.project_id
-                    cores      : @state.cores
-                    cpu_shares : Math.round(@state.cpu_shares * 256)
-                    disk       : @state.disk_quota
-                    memory     : @state.memory
-                    mintime    : Math.floor(@state.mintime * 3600)
-                    network    : @state.network
-                    cb         : (err, mesg) ->
-                        if err
-                            alert_message(type:'error', message:err)
-                        else if mesg.event == 'error'
-                            alert_message(type:'error', message:mesg.error)
-                        else
-                            alert_message(type:'success', message: 'Project quotas updated.')
-            @setState(editing: false)
-        else
-            @setState(editing: true)
+    start_admin_editing : ->
+        @setState(editing: true)
 
+    save_admin_editing : ->
+        salvus_client.project_set_quotas
+            project_id : @props.project_id
+            cores      : @state.cores
+            cpu_shares : Math.round(@state.cpu_shares * 256)
+            disk       : @state.disk_quota
+            memory     : @state.memory
+            mintime    : Math.floor(@state.mintime * 3600)
+            network    : @state.network
+            cb         : (err, mesg) ->
+                if err
+                    alert_message(type:'error', message:err)
+                else if mesg.event == 'error'
+                    alert_message(type:'error', message:mesg.error)
+                else
+                    alert_message(type:'success', message: 'Project quotas updated.')
+        @setState(editing : false)
 
-    render_admin_edit_button : ->
+    cancel_admin_editing : ->
+        settings = @props.project_settings
+        if settings?
+            # reset user input states
+            state = {}
+            for name, data of @props.quota_params
+                factor = data.display_factor ? 1
+                base_value = settings.get(name) ? 0
+                state[name] = misc.round1(base_value * factor)
+            @setState(state)
+        @setState(editing : false)
+
+    # Returns true if the admin inputs are valid, i.e.
+    #    - at least one has changed
+    #    - none are negative
+    #    - none are empty
+    valid_admin_inputs : ->
+        settings = @props.project_settings
+        if not settings?
+            return false
+
+        for name, data of @props.quota_params
+            if not settings.get(name)?
+                continue
+            factor = data?.display_factor ? 1
+            cur_val = (settings.get(name) ? 0) * factor
+            new_val = misc.parse_number_input(@state[name])
+            if not new_val?
+                return false
+            if cur_val isnt new_val
+                changed = true
+        return changed
+
+    render_admin_edit_buttons : ->
         if 'admin' in @props.account_groups
             if @state.editing
                 <Row>
-                    <Col sm=4 style={float: 'right'}>
-                        <Button onClick={@edit} bsStyle='warning' style={float: 'right'}>
-                            <Icon name='thumbs-up' /> Done
-                        </Button>
+                    <Col sm=6 smOffset=6>
+                        <ButtonToolbar style={float:'right'}>
+                            <Button onClick={@save_admin_editing} bsStyle='warning' disabled={not @valid_admin_inputs()}>
+                                <Icon name='thumbs-up' /> Done
+                            </Button>
+                            <Button onClick={@cancel_admin_editing}>
+                                Cancel
+                            </Button>
+                        </ButtonToolbar>
                     </Col>
                 </Row>
             else
                 <Row>
-                    <Col sm=4 style={float: 'right'}>
-                        <Button onClick={@edit} bsStyle='warning' style={float: 'right'}>
+                    <Col sm=6 smOffset=6>
+                        <Button onClick={@start_admin_editing} bsStyle='warning' style={float:'right'}>
                             <Icon name='pencil' /> Admin Edit...
                         </Button>
                     </Col>
                 </Row>
 
+    admin_input_validation_styles : (input) ->
+        if not misc.parse_number_input(input)?
+            style =
+                outline     : 'none'
+                borderColor : 'red'
+                boxShadow   : '0 0 10px red'
+        return style
+
     render_input : (label) ->
         if label == 'network'
             <Input
                 type     = 'checkbox'
-                ref      = label
+                ref      = {label}
                 checked  = {@state[label]}
                 style    = {marginLeft:0}
-                onChange = {=>@setState("#{label}":@refs[label].getChecked())} />
+                onChange = {=>@setState("#{label}" : if @refs[label].getChecked() then 1 else 0)} />
         else
+            # not using react component so the input stays inline
             <input
                 size     = 5
                 type     = 'text'
-                ref      = label
+                ref      = {label}
                 value    = {@state[label]}
+                style    = {@admin_input_validation_styles(@state[label])}
                 onChange = {(e)=>@setState("#{label}":e.target.value)} />
 
     render : ->
-        settings   = @props.project_settings
-        status     = @props.project_status
+        settings     = @props.project_settings
+        status       = @props.project_status
         total_quotas = @props.total_project_quotas
         if not total_quotas?
             # this happens for the admin -- just ignore any upgrades from the users
             total_quotas = {}
             for name, data of @props.quota_params
                 total_quotas[name] = settings.get(name)
-            console.log('total quotas',total_quotas)
         if not settings?
             return <Loading/>
         disk_quota = <b>{settings.get('disk_quota')}</b>
@@ -511,7 +534,7 @@ QuotaConsole = rclass
         upgrades = @props.all_upgrades_to_this_project
 
         <div>
-            {@render_admin_edit_button()}
+            {@render_admin_edit_buttons()}
             {@render_quota_row(quota, settings.get(name), upgrades[name], quota_params[name]) for name, quota of quotas}
         </div>
 
@@ -575,6 +598,7 @@ ShareCopyPanel = rclass
             placeholder = 'No description'
             disabled    = {@state.state == 'saving'}
             onChange    = {=>@setState(description_text:@refs.share_description.getValue())} />
+
     render : ->
         project_id = @props.project.get('project_id')
         shared = @props.flux.getStore('projects').get_public_paths(project_id)
@@ -783,7 +807,7 @@ ProjectControlPanel = rclass
                         {@render_state()}
                     </Col>
                     <Col sm=6>
-                        <Button bsStyle='warning' onClick={(e)=>e.preventDefault(); @setState(restart:true)}>
+                        <Button bsStyle='warning' onClick={(e)=>e.preventDefault(); @setState(restart:true)} style={float:'right'}>
                             <Icon name='refresh' /> Restart Project...
                         </Button>
                     </Col>
@@ -900,7 +924,9 @@ CollaboratorsSearch = rclass
             return
         select = (r for r in @state.select when not @props.project.get('users').get(r.account_id)?)
         if select.length == 0
-            <Button style={marginBottom:'10px'} onClick={@write_email_invite}><Icon name='envelope' /> No matches. Send email invitation...</Button>
+            <Button style={marginBottom:'10px'} onClick={@write_email_invite}>
+                <Icon name='envelope' /> No matches. Send email invitation...
+            </Button>
         else
             <div>
                 <Input type='select' multiple ref='select'>
@@ -965,8 +991,12 @@ exports.CollaboratorsList = CollaboratorsList = rclass
             </Well>
 
     user_remove_button : (account_id, group) ->
-        <Button disabled={group=='owner'} className='pull-right' style={marginBottom: '6px'}
-            onClick={=>@setState(removing:account_id)}><Icon name='user-times' /> Remove...
+        <Button
+            disabled = {group is 'owner'}
+            style    = {marginBottom: '6px', float: 'right'}
+            onClick  = {=>@setState(removing:account_id)}
+        >
+            <Icon name='user-times' /> Remove...
         </Button>
 
     render_user : (user) ->
@@ -1004,7 +1034,9 @@ CollaboratorsPanel = rclass
     render : ->
         <ProjectSettingsPanel title='Collaborators' icon='user'>
             <div key='mesg'>
-                <span style={color:'#666'}>Collaborators can <b>modify anything</b> in this project, except backups.  They can add and remove other collaborators, but cannot remove owners.
+                <span style={color:'#666'}>
+                    Collaborators can <b>modify anything</b> in this project, except backups.
+                    They can add and remove other collaborators, but cannot remove owners.
                 </span>
             </div>
             <hr />
@@ -1026,27 +1058,28 @@ ProjectSettings = rclass
         return @props.project != nextProps.project or @props.user_map != nextProps.user_map
 
     render : ->
+        id = @props.project_id
         <div>
             {if @props.project.get('deleted') then <DeletedProjectWarning />}
             <h1><Icon name='wrench' /> Settings and configuration</h1>
             <Row>
                 <Col sm=6>
                     <TitleDescriptionPanel
-                         project_id    = {@props.project_id}
-                         project_title = {@props.project.get('title')}
-                         description   = {@props.project.get('description')}
-                         actions       = {@props.flux.getActions('projects')} />
+                        project_id    = {id}
+                        project_title = {@props.project.get('title')}
+                        description   = {@props.project.get('description')}
+                        actions       = {@props.flux.getActions('projects')} />
                     <UsagePanel
-                        project_id                           = {@props.project_id}
+                        project_id                           = {id}
                         project                              = {@props.project}
                         actions                              = {@props.flux.getActions('projects')}
                         user_map                             = {@props.user_map}
                         account_groups                       = {@props.flux.getStore('account').state.groups}
                         upgrades_you_can_use                 = {@props.flux.getStore('account').get_total_upgrades()}
                         upgrades_you_applied_to_all_projects = {@props.flux.getStore('projects').get_total_upgrades_you_have_applied()}
-                        upgrades_you_applied_to_this_project = {@props.flux.getStore('projects').get_total_upgrade_you_applied_to_project(@props.project_id)}
-                        total_project_quotas                 = {@props.flux.getStore('projects').get_total_project_quotas(@props.project_id)}
-                        all_upgrades_to_this_project         = {@props.flux.getStore('projects').get_upgrades_to_project(@props.project_id)} />
+                        upgrades_you_applied_to_this_project = {@props.flux.getStore('projects').get_upgrades_you_applied_to_project(id)}
+                        total_project_quotas                 = {@props.flux.getStore('projects').get_total_project_quotas(id)}
+                        all_upgrades_to_this_project         = {@props.flux.getStore('projects').get_upgrades_to_project(id)} />
 
                     <CollaboratorsPanel  project={@props.project} flux={@props.flux} user_map={@props.user_map} />
                 </Col>
@@ -1070,11 +1103,11 @@ ProjectController = rclass
     getInitialState : ->
         admin_project : undefined  # used in case visitor to project is admin
 
-    componentWillUnmount: ->
+    componentWillUnmount : ->
         delete @_admin_project
         @_table?.close()  # if admin, stop listening for changes
 
-    init_admin_view: ->
+    init_admin_view : ->
         # try to load it directly for future use
         @_admin_project = 'loading'
         query = {}
@@ -1084,7 +1117,7 @@ ProjectController = rclass
         @_table.on 'change', =>
             @setState(admin_project : @_table.get(@props.project_id))
 
-    render_admin_message: ->
+    render_admin_message : ->
         <Alert bsStyle='warning' style={margin:'10px'}>
             <h4><strong>Warning:</strong> you are editing the project settings as an <strong>administrator</strong>.</h4>
             <ul>
@@ -1093,8 +1126,7 @@ ProjectController = rclass
             </ul>
         </Alert>
 
-
-    render: ->
+    render : ->
         if not @props.flux? or not @props.project_map? or not @props.user_map?
             return <Loading />
         user_map = @props.user_map
@@ -1132,7 +1164,11 @@ exports.create_page = (project_id, dom_node) ->
     React.render(render(project_id), dom_node)
 
 exports.unmount = (dom_node) ->
-    #console.log("unmount project_settings")
+    # If we don't do this ().empty, then for some reason (that we don't understand)
+    # many empty divs get added to the page every time we unmount.  So do this before
+    # using unmountComponentAtNode everywhere.  These unmounts will (presumably) disappear
+    # as we finish React-ifying all of SMC.
+    $(dom_node).empty()
     React.unmountComponentAtNode(dom_node)
 
 
@@ -1145,6 +1181,7 @@ Top Navbar button label
 
 ProjectName = rclass
     displayName : 'ProjectName'
+
     propTypes :
         project_id  : rtypes.string.isRequired
         flux        : rtypes.object

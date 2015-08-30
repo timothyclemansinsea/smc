@@ -1023,7 +1023,9 @@ ProjectFilesActionBox = rclass
             </div>
 
     different_project_button : ->
-        <Button bsSize='xsmall' onClick={=>@setState(show_different_project : true)}>a different project</Button>
+        <Button bsSize='small' onClick={=>@setState(show_different_project : true)}>
+            <Icon name='paper-plane' /> Choose a different project...
+        </Button>
 
     copy_click : ->
         destination_directory  = @state.copy_destination_directory
@@ -1090,13 +1092,13 @@ ProjectFilesActionBox = rclass
                 <Row>
                     <Col sm={if @state.show_different_project then 4 else 5} style={color:'#666'}>
                         <h4>
-                            Copy to a folder or {if @state.show_different_project then 'project' else @different_project_button()}
+                            Copy to a folder
                         </h4>
                         {@render_selected_files_list()}
                     </Col>
                     {@render_different_project_dialog()}
                     <Col sm={if @state.show_different_project then 4 else 5} style={color:'#666'}>
-                        <h4>Destination</h4>
+                        <h4>Destination {if @state.show_different_project then '' else @different_project_button()}</h4>
                         <DirectoryInput
                             on_change     = {(value)=>@setState(copy_destination_directory:value)}
                             key           = 'copy_destination_directory'
@@ -1282,7 +1284,7 @@ ProjectFilesSearch = rclass
                 Showing only files matching "{@props.file_search}"
             </Alert>
 
-    open_selected_file: ->
+    open_selected_file : ->
         if not @props.selected_file?
             return
         new_path = misc.path_to_file(@props.current_path, @props.selected_file.name)
@@ -1360,29 +1362,29 @@ ProjectFilesNew = rclass
 error_style =
     marginRight : '1ex'
     whiteSpace  : 'pre-line'
+    boxShadow   : '5px 5px 5px grey'
     position    : 'absolute'
     zIndex      : 15
     right       : '5px'
     top         : '-43px'
-    boxShadow   : '5px 5px 5px grey'
 
 ProjectFiles = rclass
     displayName : 'ProjectFiles'
 
     propTypes :
-        current_path  : rtypes.string
-        activity      : rtypes.object
-        page_number   : rtypes.number
-        file_action   : rtypes.string
-        file_search   : rtypes.string
-        show_hidden   : rtypes.bool
-        sort_by_time  : rtypes.bool
-        error         : rtypes.string
-        checked_files : rtypes.object
-        project_id    : rtypes.string
-        flux          : rtypes.object
-        actions       : rtypes.object.isRequired
-        project_map   : rtypes.object
+        current_path           : rtypes.string
+        activity               : rtypes.object
+        page_number            : rtypes.number
+        file_action            : rtypes.string
+        file_search            : rtypes.string
+        show_hidden            : rtypes.bool
+        sort_by_time           : rtypes.bool
+        error                  : rtypes.string
+        checked_files          : rtypes.object
+        project_id             : rtypes.string
+        flux                   : rtypes.object
+        actions                : rtypes.object.isRequired
+        project_map            : rtypes.object
         file_listing_page_size : rtypes.number
 
     getDefaultProps : ->
@@ -1455,7 +1457,7 @@ ProjectFiles = rclass
             activity = {underscore.values(@props.activity)}
             on_clear = {=>@props.actions.clear_all_activity()} />
 
-    render_deleted: ->
+    render_deleted : ->
         if @props.project_map?.get(@props.project_id)?.get('deleted')
             <DeletedProjectWarning/>
 
@@ -1466,7 +1468,7 @@ ProjectFiles = rclass
                 style   = {error_style}
                 onClose = {=>@props.actions.setTo(error:'')} />
 
-    render_file_listing: (listing, file_map, error, project_state, public_view) ->
+    render_file_listing : (listing, file_map, error, project_state, public_view) ->
         if project_state? and project_state not in ['running', 'saving']
             return @render_project_state(project_state)
 
@@ -1508,7 +1510,7 @@ ProjectFiles = rclass
                 <Loading />
             </div>
 
-    render_project_state: (project_state) ->
+    render_project_state : (project_state) ->
         <div style={fontSize:'40px', textAlign:'center', color:'#999999'} >
             <ProjectState state={project_state} />
         </div>
@@ -1570,17 +1572,17 @@ render = (project_id, flux) ->
     actions = flux.getProjectActions(project_id)
     name = store.name
     connect_to =
-        activity      : name
-        file_search   : name
-        file_action   : name
-        error         : name
-        page_number   : name
-        checked_files : name
-        current_path  : name
-        show_hidden   : name
-        sort_by_time  : name
+        activity               : name
+        file_search            : name
+        file_action            : name
+        error                  : name
+        page_number            : name
+        checked_files          : name
+        current_path           : name
+        show_hidden            : name
+        sort_by_time           : name
         file_listing_page_size : name
-        project_map   : 'projects'
+        project_map            : 'projects'
     <Flux flux={flux} connect_to={connect_to}>
         <ProjectFiles project_id={project_id} flux={flux} actions={actions}/>
     </Flux>

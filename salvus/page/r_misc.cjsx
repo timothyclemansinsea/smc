@@ -21,7 +21,7 @@
 
 {React, rclass, rtypes, flux, is_flux, is_flux_actions} = require('flux')
 
-{Alert, Button, ButtonToolbar, Col, Input, OverlayTrigger, Popover, Row, Well} = require('react-bootstrap')
+{Alert, Button, ButtonToolbar, Col, Input, OverlayTrigger, Popover, Row, Well, ProgressBar} = require('react-bootstrap')
 
 Combobox = require('react-widgets/lib/Combobox')
 
@@ -31,17 +31,17 @@ underscore = require('underscore')
 
 # Checks whether two immutable variables (either ImmutableJS objects or actual
 # immutable types) are equal. Gives a warning and returns false (no matter what) if either variable is mutable.
-immutable_equals_single = (a, b) ->
+immutable_equals_single = (a, b, prop_name, display_name) ->
     if typeof(a) == "object" or typeof(b) == "object"
         if (is_flux(a) and is_flux(b)) or (is_flux_actions(a) and is_flux_actions(b))
             return a == b
         if immutable.Iterable.isIterable(a) and immutable.Iterable.isIterable(b)
             return immutable.is(a, b)
-        console.warn("Using mutable object in ImmutablePureRenderMixin:", a, b)
+        console.warn("Using mutable object in ImmutablePureRenderMixin: check prop #{prop_name} in #{display_name}", a, b)
         return false
     return a == b
 
-immutable_equals = (objA, objB) ->
+immutable_equals = (objA, objB, display_name) ->
     if immutable.is(objA, objB)
         return true
     keysA = misc.keys(objA)
@@ -50,7 +50,7 @@ immutable_equals = (objA, objB) ->
         return false
 
     for key in keysA
-        if not objB.hasOwnProperty(key) or not immutable_equals_single(objA[key], objB[key])
+        if not objB.hasOwnProperty(key) or not immutable_equals_single(objA[key], objB[key], key, display_name)
             return false
     return true
 
@@ -58,7 +58,7 @@ immutable_equals = (objA, objB) ->
 # re-render if any props are mutable objects.
 exports.ImmutablePureRenderMixin = ImmutablePureRenderMixin =
     shouldComponentUpdate: (nextProps, nextState) ->
-        not immutable_equals(@props, nextProps) or not immutable_equals(@state, nextState)
+        not immutable_equals(@props, nextProps, @displayName) or not immutable_equals(@state, nextState, @displayName)
 
 # Font Awesome component -- obviously TODO move to own file
 # Converted from https://github.com/andreypopp/react-fa
@@ -857,3 +857,24 @@ EditorFileInfoDropdown = rclass
 
 exports.render_file_info_dropdown = (filename, actions, dom_node) ->
     React.render(<EditorFileInfoDropdown filename={filename} actions={actions}/>, dom_node)
+
+exports.PasswordMeter = rclass
+    displayName : 'Misc-PasswordMeter'
+
+    propTypes :
+        result  : rtypes.shape(
+            score              : rtypes.number
+            entropy            : rtypes.number
+            crack_time_display : rtypes.string
+            ).isRequired
+        bsStyle : rtypes.oneOf(['default', 'primary', 'success', 'info', 'warning', 'danger', 'link'])
+
+    getDefaultProps : ->
+        bsStyle : 'default'
+
+    render : ->
+        score = ['Very weak', 'Weak', 'So-so', 'Good', 'Awesome!']
+        return <div style={marginBottom: '1em'}>
+            <ProgressBar striped bsStyle={@props.bsStyle} now={2*@props.result.entropy} />
+            {score[@props.result.score]} (crack time: {@props.result.crack_time_display})
+        </div>

@@ -2412,6 +2412,8 @@ firewall = (opts) ->
 #
 #
 init_firewall = (cb) ->
+    cb?()
+    return
     dbg = (m) -> winston.debug("init_firewall: #{m}")
     if require("os").hostname() == 'sagemathcloud'
         dbg("running in sagemathcloud virtualbox vm -- no firewall")

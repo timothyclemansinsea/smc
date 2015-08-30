@@ -2649,12 +2649,6 @@ class RethinkDB
                 opts.cb("user get query not allowed for #{opts.table}.#{field}")
                 return
 
-        # get the query that gets only things in this table that this user
-        # is allowed to see.
-        if not user_query.get.all?.args?
-            opts.cb("user get query not allowed for #{opts.table} (no getAll filter)")
-            return
-
         result = undefined
         db_query = @table(SCHEMA[opts.table].virtual ? opts.table)
         opts.this = @
@@ -2669,6 +2663,9 @@ class RethinkDB
         require_admin = false
         async.series([
             (cb) =>
+                if not user_query.get.all?
+                    cb()
+                    return
                 dbg("initial selection of records from table")
                 # Get the spec
                 {cmd, args} = user_query.get.all

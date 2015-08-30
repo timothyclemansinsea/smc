@@ -28,7 +28,6 @@ d3.coffee
 console.coffee
 
 account.coffee
-sign_in.cjsx
 syncdoc.coffee
 syncdb.coffee
 
@@ -67,7 +66,10 @@ exit_confirmation.coffee
 history.coffee
 
 r_misc.cjsx
-r_account.cjsx
+account_flux.coffee
+account_settings.cjsx
+sign_in.cjsx
+
 r_help.cjsx
 project_search.cjsx
 

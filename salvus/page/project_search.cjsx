@@ -122,8 +122,6 @@ ProjectSearchOutput = rclass
 ProjectSearchOutputHeader = rclass
     displayName : 'ProjectSearch-ProjectSearchOutputHeader'
 
-    mixins: [ImmutablePureRenderMixin]
-
     propTypes :
         most_recent_path   : rtypes.string.isRequired
         command            : rtypes.string

@@ -256,7 +256,6 @@ AddPaymentMethod = rclass
             return validate.invalid
 
     render_input_expiration : ->
-        that = @
         <div style={marginBottom:'15px'}>
             <input
                 readOnly    = {@state.submitting}
@@ -542,6 +541,45 @@ PaymentMethods = rclass
             {@render_payment_methods()}
         </Panel>
 
+
+PlanInfo = rclass
+    displayName : 'PlanInfo'
+
+    propTypes :
+        plan : rtypes.string.isRequired
+
+    render_plan_info_line : (name, value, data) ->
+        <Row key={name}>
+            <Col sm=6 style={fontWeight:'bold'}>
+                {data.display}
+            </Col>
+            <Col sm=6>
+                {value * data.display_factor} {misc.plural(value, data.display_unit)}
+            </Col>
+        </Row>
+
+    render : ->
+        upgrades = require('schema').PROJECT_UPGRADES
+        plan_data = upgrades.membership[@props.plan]
+        if not plan_data?
+            return <div>Unknown plan type: {@props.plan}</div>
+
+        benefits = plan_data.benefits
+        params   = upgrades.params
+
+        <Row style={marginBottom:'5px'}>
+            <Col sm=12>
+                <Alert bsStyle='info'>
+                    <h4><Icon name='info-circle' /> Plan Information</h4>
+                    <div>
+                        The <span style={fontWeight:'bold'}>{@props.plan}</span> plan provides the following
+                        upgrades, which you can apply to any of your projects:
+                    </div>
+                    {@render_plan_info_line(name, value, params[name]) for name, value of benefits}
+                </Alert>
+            </Col>
+        </Row>
+
 AddSubscription = rclass
     displayName : 'AddSubscription'
 
@@ -555,31 +593,6 @@ AddSubscription = rclass
     submit_create_subscription : ->
         plan = @state.selected_plan
         @props.actions.create_subscription(plan)
-
-    render_plan_info_line : (name, value, data) ->
-        <div key={name}>
-            {data.display}
-            &nbsp;-&nbsp;
-            {value * data.display_factor} {misc.plural(value, data.display_unit)}
-        </div>
-
-    render_subscription_info : ->
-        upgrades = require('schema').PROJECT_UPGRADES
-        plan_data = upgrades.membership[@state.selected_plan]
-        if not plan_data?
-            return
-
-        benefits = plan_data.benefits
-        params   = upgrades.params
-
-        <Row>
-            <Col sm=12>
-                <Alert bsStyle='info'>
-                    <p>This plan provides the following upgrades, which you can apply to any of your projects:</p>
-                    {@render_plan_info_line(name, value, params[name]) for name, value of benefits}
-                </Alert>
-            </Col>
-        </Row>
 
     render_create_subscription_options : ->
         <div>
@@ -609,7 +622,7 @@ AddSubscription = rclass
                     </Input>
                 </Col>
             </Row>
-            {@render_subscription_info() if @state.selected_plan isnt ''}
+            {<PlanInfo plan={@state.selected_plan} /> if @state.selected_plan isnt ''}
         </div>
 
     render_create_subscription_buttons : ->

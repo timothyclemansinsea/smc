@@ -849,7 +849,6 @@ class exports.Connection extends EventEmitter
             timeout : 15
             cb : opts.cb
 
-
     #################################################
     # Project Management
     #################################################
