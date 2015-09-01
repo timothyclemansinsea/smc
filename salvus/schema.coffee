@@ -77,8 +77,8 @@ schema.table_name =
                 foo : true   # user is allowed (but not required) to set this
                 bar : true   # means user is allowed to set this
 
-To specify more than one user quer against a table, make a new table as above, omitting
-everything except the user_query section, and included a virtual section listing the actual
+To specify more than one user query against a table, make a new table as above, omitting
+everything except the user_query section, and include a virtual section listing the actual
 table to query:
 
     virtual : 'original_table'
@@ -171,6 +171,9 @@ schema.accounts =
         stripe_customer :
             type : 'map'
             desc : 'Information about customer from the point of view of stripe (exactly what is returned by stripe.customers.retrieve).'
+        profile :
+            type : 'map'
+            desc : 'Information related to displaying this users location and presence in a document or chatroom.'
     indexes :
         passports     : ["that.r.row('passports').keys()", {multi:true}]
         created_by    : ["[that.r.row('created_by'), that.r.row('created')]"]
@@ -222,6 +225,9 @@ schema.accounts =
                 groups          : []
                 last_active     : null
                 stripe_customer : null
+                profile :
+                    image       : undefined
+                    color       : undefined
         set :
             all :
                 cmd  : 'getAll'
@@ -235,6 +241,7 @@ schema.accounts =
                 terminal        : true
                 autosave        : true
                 evaluate_key    : true
+                profile         : true
 
 schema.blobs =
     desc : 'Table that stores blobs mainly generated as output of Sage worksheets.'
@@ -308,6 +315,7 @@ schema.collaborators =
                 first_name  : ''
                 last_name   : ''
                 last_active : null
+                profile     : null
 
 schema.compute_servers =
     primary_key : 'host'
@@ -794,8 +802,6 @@ exports.COMPUTE_STATES =
         timeout  : 60
         commands : ['save', 'copy_path', 'mkdir', 'directory_listing', 'read_file', 'network', 'mintime', 'disk_quota', 'compute_quota', 'status']
 
-
-
 #
 # Upgrades to projects.
 #
@@ -850,7 +856,7 @@ upgrades.params =
         unit           : 'upgrade'
         display_unit   : 'upgrade'
         display_factor : 1
-        desc           : 'If enabled you may move this project to a members-only server (not implemented yet).'
+        desc           : 'If enabled you may move this project to a members-only server (not automated yet; email help@sagemath.com and we can move your project).'
 
 membership = upgrades.membership = {}
 
@@ -864,7 +870,7 @@ membership.private_server =
 membership.premium =    # a user that has a premium membership
     price :
         month  : 49
-        month6 : 269
+        year   : 499
     benefits :
         cpu_shares  : 128*8
         cores       : 2
@@ -877,7 +883,7 @@ membership.premium =    # a user that has a premium membership
 membership.standard =   # a user that has a standard membership
     price :
         month  : 7
-        month6 : 35
+        year   : 79
     benefits :
         cpu_shares  : 128
         cores       : 0

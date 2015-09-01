@@ -25,6 +25,11 @@
 
 {ErrorDisplay, Icon, LabeledRow, Loading, NumberInput, Saving, SelectorInput, PasswordMeter} = require('r_misc')
 
+{ColorPicker} = require('colorpicker')
+{Avatar} = require('profile')
+
+md5 = require('md5')
+
 account         = require('account')
 misc            = require('misc')
 
@@ -731,6 +736,65 @@ OtherSettings = rclass
             {@render_page_size_warning()}
         </Panel>
 
+ProfileSettings = rclass
+    displayName : 'Account-ProfileSettings'
+
+    getInitialState: ->
+        show_instructions : false
+
+    onColorChange : (value) ->
+        @props.flux.getTable('account').set({profile : {color: value}})
+
+    onGravatarSelect : () ->
+        if @refs.checkbox.getChecked()
+            email = @props.email_address
+            gravatar_url = "https://www.gravatar.com/avatar/#{md5 email.toLowerCase()}?d=identicon&s=#{30}"
+            @props.flux.getTable('account').set({profile : {image: gravatar_url}})
+        else
+            @props.flux.getTable('account').set({profile : {image: ""}})
+
+    render_gravatar_button: ->
+        <Button bsStyle='info' onClick={=>@setState(show_instructions:true)}>
+            Set Gravatar...
+        </Button>
+
+    render_instruction_well: ->
+        <Well style={marginTop:'10px', marginBottom:'10px'}>
+            Go to the <a href="https://en.gravatar.com" target="_blank"> Wordpress Gravatar site </a> and
+            sign in (or create an account) using {@props.email_address}.
+            <br/><br/>
+            <br/><br/>
+            <Button onClick={=>@setState(show_instructions:false)}>
+                Close
+            </Button>
+        </Well>
+
+    render_set_gravatar: ->
+        <Row>
+            <Col md=6 key='checkbox'>
+                <Input
+                    ref="checkbox"
+                    label='Use gravatar'
+                    type='checkbox'
+                    checked={@props.profile?.image? and (@props.profile.image isnt "")}
+                    onChange={@onGravatarSelect}>
+                </Input>
+            </Col>
+            <Col md=6 key='set'>
+                {@render_gravatar_button() if not @state.show_instructions}
+            </Col>
+        </Row>
+
+    render : ->
+        <Panel header={<h2> <Avatar size=30 account={@props} /> Profile </h2>}>
+            <LabeledRow label='Color'>
+                <ColorPicker color={@props.profile?.color} style={maxWidth:"150px"} onChange={@onColorChange}/>
+            </LabeledRow>
+            <LabeledRow label='Color'>
+                {if @state.show_instructions then @render_instruction_well() else @render_set_gravatar()}
+             </LabeledRow>
+        </Panel>
+
 AccountCreationToken = rclass
     displayName : 'AccountCreationToken'
 
@@ -899,6 +963,7 @@ render = () ->
                 <FluxComponent flux={flux} connectToStores={'account'} >
                     <EditorSettings />
                     <OtherSettings />
+                    <ProfileSettings />
                     <AdminSettings />
                 </FluxComponent>
             </Col>

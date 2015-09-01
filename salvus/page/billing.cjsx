@@ -37,6 +37,9 @@ class BillingActions extends Actions
     clear_error: => @setTo(error:'')
 
     update_customer: (cb) =>
+        if not Stripe?
+            cb?("stripe not available")
+            return
         if @_update_customer_lock then return else @_update_customer_lock=true
         @setTo(action:"Updating billing information")
         customer_is_defined = false
@@ -351,7 +354,7 @@ AddPaymentMethod = rclass
     render_payment_method_buttons : ->
         <Row>
             <Col sm=4>
-                Powered by Stripe
+                Powered by <a href="https://stripe.com/" target="_blank">Stripe</a>
             </Col>
             <Col sm=8>
                 <ButtonToolbar className='pull-right'>
@@ -560,7 +563,10 @@ PlanInfo = rclass
 
     render : ->
         upgrades = require('schema').PROJECT_UPGRADES
-        plan_data = upgrades.membership[@props.plan]
+        x = @state.selected_plan.split('-')
+        plan = x[0]
+        period = x[1] ? 'monthly'   # monthly = default
+        plan_data = upgrades.membership[plan]
         if not plan_data?
             return <div>Unknown plan type: {@props.plan}</div>
 
@@ -596,18 +602,17 @@ AddSubscription = rclass
 
     render_create_subscription_options : ->
         <div>
-            <h4>Sign up for a plan</h4>
-            <span style={color:"#666"}>NOTE  (Aug 14, 2015):
-            We are currently implementing
-            automated benefits for signing up
-            for a plan.
-            If you need a specific project upgrade <b>now</b>,
-            please email <a href="mailto:help@sagemath.com">help@sagemath.com</a>.
+            <h4><Icon name='list-alt'/> Sign up for a subscription</h4>
+            <span style={color:'#666'}>
+            A subscription allows you to upgrade memory, disk space, and other quotas.
+            Select the subscription below to see what upgrades it provides.  You may
+            subscribe more than once to increase your upgrades.
+            If you have any questions, please email <a href='mailto:help@sagemath.com'>help@sagemath.com</a>.
             </span>
             <hr/>
             <Row>
                 <Col sm=4>
-                    Select a plan
+                    Select a subscription
                 </Col>
                 <Col sm=8>
                     <Input
@@ -616,9 +621,11 @@ AddSubscription = rclass
                         placeholder = 'Select a plan...'
                         onChange    = {=>@setState(selected_plan : @refs.plan.getValue())}
                     >
-                        <option value=''>Select a plan...</option>
-                        <option value='standard'>Standard plan - $7 / month</option>
-                        <option value='premium'>Premium plan - $49 / month</option>
+                        <option value=''>Select a subscription...</option>
+                        <option value='standard'>Standard subscription - $7 / month</option>
+                        <option value='premium'>Premium subscription - $49 / month</option>
+                        <option value='standard-year'>One Year Standard subscription - $79 / year</option>
+                        <option value='premium-year'>One Year Premium subscription - $499 / year</option>
                     </Input>
                 </Col>
             </Row>
@@ -628,7 +635,7 @@ AddSubscription = rclass
     render_create_subscription_buttons : ->
         <Row>
             <Col sm=4>
-                Powered by Stripe
+                Powered by <a href="https://stripe.com/" target="_blank">Stripe</a>
             </Col>
             <Col sm=8>
                 <ButtonToolbar className='pull-right'>
@@ -915,6 +922,8 @@ BillingPage = rclass
             </div>
 
     render : ->
+        if not Stripe?
+            return <div>Stripe is not available...</div>
         <div>
             <div>&nbsp;{@render_action()}</div>
             {@render_error()}

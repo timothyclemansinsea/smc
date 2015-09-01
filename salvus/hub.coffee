@@ -24,9 +24,10 @@
 
 DEBUG = DEBUG2 = false
 
-if process.env.DEVEL
+if process.env.DEVEL or process.env.DEBUG
     DEBUG = true
 
+console.log("DEBUG= ", DEBUG)
 
 ##############################################################################
 #
@@ -1546,14 +1547,14 @@ class Client extends EventEmitter
             @handle_data_from_client(data)
 
         @conn.on "end", () =>
-            # Actually destroy Client in a few minutes, unless user reconnects
-            # to this session.  Often the user may have a temporary network drop,
-            # and we keep everything waiting for them for short time
-            # in case this happens.
             winston.debug("connection: hub <--> client(id=#{@id}, address=#{@ip_address})  -- CLOSED; starting destroy timer")
             # CRITICAL -- of course we need to cancel all changefeeds when user disconnects,
             # even temporarily, since messages could be dropped otherwise
             @query_cancel_all_changefeeds()
+            # Actually destroy Client in a few minutes, unless user reconnects
+            # to this session.  Often the user may have a temporary network drop,
+            # and we keep everything waiting for them for short time
+            # in case this happens.
             @_destroy_timer = setTimeout(@destroy, 1000*CLIENT_DESTROY_TIMER_S)
 
         winston.debug("connection: hub <--> client(id=#{@id}, address=#{@ip_address})  ESTABLISHED")
@@ -2012,7 +2013,7 @@ class Client extends EventEmitter
     # ping/pong
     ######################################################
     mesg_ping: (mesg) =>
-        @push_to_client(message.pong(id:mesg.id))
+        @push_to_client(message.pong(id:mesg.id, now:new Date()))
 
 
     ######################################################
@@ -2689,16 +2690,6 @@ class Client extends EventEmitter
             # being proxied through the same hub.
             mesg.message.client_id = @id
 
-            # Tag broadcast messages with identifying info.
-            if mesg.message.event == 'codemirror_bcast'
-                if @signed_in_mesg?
-                    if not mesg.message.name?
-                        mesg.message.name = @fullname()
-                    if not mesg.message.color?
-                        # Use first 6 digits of uuid... one color per session, NOT per username.
-                        # TODO: this could be done client side in a way that respects their color scheme...?
-                        mesg.message.color = @id.slice(0,6)
-
             if mesg.message.event == 'codemirror_write_to_disk'
                 # Record that a client is actively doing something with this session, but
                 # use a timeout to give local hub a chance to actually do the above save...
@@ -3191,6 +3182,9 @@ class Client extends EventEmitter
         if not @_query_changefeeds?
             cb?(); return
         dbg = @dbg("query_cancel_all_changefeeds")
+        v = @_query_changefeeds
+        dbg("canceling #{v.length} changefeeds")
+        delete @_query_changefeeds
         f = (id, cb) =>
             dbg("canceling id=#{id}")
             database.user_query_cancel_changefeed
@@ -3200,9 +3194,8 @@ class Client extends EventEmitter
                         dbg("FEED: warning #{id} -- error canceling a changefeed #{misc.to_json(err)}")
                     else
                         dbg("FEED: canceled changefeed -- #{id}")
-                    delete @_query_changefeeds[id]
                     cb()
-        async.map(misc.keys(@_query_changefeeds), f, (err) => cb?(err))
+        async.map(misc.keys(v), f, (err) => cb?(err))
 
     mesg_query_cancel: (mesg) =>
         if not @_query_changefeeds?
@@ -3759,15 +3752,18 @@ normalize_path = (path) ->
     path = misc.trunc_middle(path, 2048)  # prevent potential attacks/mistakes involving a large path breaking things...
     ext = misc.filename_extension(path)
     action = 'edit'
+    {head, tail} = misc.path_split(path)
     if ext == "sage-chat"
-        action = 'chat'
-        path = path.slice(0, path.length-'.sage-chat'.length)
-        {head, tail} = misc.path_split(path)
-        tail = tail.slice(1) # get rid of .
-        if head
-            path = head + '/' + tail
-        else
-            path = tail
+        action = 'chat'  # editing sage-chat gets the extra important chat action (instead of just edit)
+        if tail?[0] == '.'
+            # hidden sage-chat associated to a regular file, so notify about the regular file
+            path = path.slice(0, path.length-'.sage-chat'.length)
+            {head, tail} = misc.path_split(path)
+            tail = tail.slice(1) # get rid of .
+            if head
+                path = head + '/' + tail
+            else
+                path = tail
     else if ext.slice(0,7) == 'syncdoc'   # for IPython, and possibly other things later
         path = path.slice(0, path.length - ext.length - 1)
         {head, tail} = misc.path_split(path)
@@ -6084,7 +6080,7 @@ stripe_sales_tax = (opts) ->
         state = undefined
         for x in customer.sources.data
             if x.id == customer.default_source
-                zip = x.address_zip.slice(0,5)
+                zip = x.address_zip?.slice(0,5)
                 state = x.address_state
                 break
         if not zip? or state != 'WA'
