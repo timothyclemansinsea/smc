@@ -700,13 +700,14 @@ PlanInfo = rclass
 
         </Panel>
 
-AddSubscription = rclass
+exports.AddSubscription = AddSubscription = rclass
     displayName : 'AddSubscription'
 
     propTypes :
-        on_close      : rtypes.func.isRequired
+        show_only     : rtypes.bool
+        on_close      : rtypes.func
         selected_plan : rtypes.string
-        actions       : rtypes.object.isRequired
+        actions       : rtypes.object
 
     getDefaultProps : ->
         selected_plan : ''
@@ -819,8 +820,8 @@ AddSubscription = rclass
             <Col sm=10 smOffset=1>
                 <Well style={boxShadow:'5px 5px 5px lightgray', zIndex:1}>
                     {@render_create_subscription_options()}
-                    {@render_create_subscription_confirm() if @props.selected_plan isnt ''}
-                    {@render_create_subscription_buttons()}
+                    {@render_create_subscription_confirm() if @props.selected_plan isnt '' and not @props.show_only}
+                    {@render_create_subscription_buttons() if not @props.show_only}
                 </Well>
                 <ExplainResources type='shared'/>
             </Col>
@@ -1279,6 +1280,7 @@ Subscriptions = rclass
     render_add_subscription : ->
         # TODO: the #smc-billing-tab is to scroll back near the top of the page; will probably go away.
         <AddSubscription
+            show_only     = {false}
             on_close      = {=>@setState(state : 'view'); set_selected_plan(''); $("#smc-billing-tab").scrollintoview()}
             selected_plan = {@props.selected_plan}
             actions       = {@props.redux.getActions('billing')} />

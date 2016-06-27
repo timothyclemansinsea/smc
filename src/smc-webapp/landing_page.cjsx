@@ -1,11 +1,10 @@
 {rclass, React, ReactDOM, redux, rtypes} = require('./smc-react')
-{Alert, Button, ButtonToolbar, Col, Modal, Grid, Row, Input, Well, ClearFix} = require('react-bootstrap')
-{ErrorDisplay, Icon, Loading, ImmutablePureRenderMixin, Footer, UNIT, SAGE_LOGO_COLOR, BS_BLUE_BGRND} = require('./r_misc')
+{Alert, Button, ButtonToolbar, Col, Modal, Grid, Row, Input, Well, Tabs, Tab, Panel, Tip} = require('react-bootstrap')
+{ErrorDisplay, Icon, Loading, ImmutablePureRenderMixin, Footer, UNIT, SAGE_LOGO_COLOR, BS_BLUE_BGRND, Space} = require('./r_misc')
 {HelpEmailLink, SiteName, SiteDescription, TermsOfService, AccountCreationEmailInstructions} = require('./customize')
-
+{ProjectQuotaFreeTable, ProjectQuotaBoundsTable, AddSubscription, FAQ} = require('./billing')
 #DESC_FONT = "'Roboto Mono','monospace'"
 DESC_FONT = 'sans-serif'
-
 misc = require('smc-util/misc')
 # {SMC_ICON_URL} = require('./misc_page')
 SMC_ICON_URL = require('salvus-icon.svg')
@@ -104,7 +103,7 @@ SignUp = rclass
             <Input ref='token' type='text' placeholder='Enter the secret token' />
 
     render : ->
-        <Well style={marginTop:'10px'}>
+        <Well>
             {@display_token_input()}
             {@display_error("token")}
             {@display_passports()}
@@ -347,10 +346,11 @@ LANDING_PAGE_CONTENT =
         heading : 'LaTeX Editor'
         text : 'Write beautiful documents using LaTeX.'
 
-SMC_Commercial = () ->
-    <iframe width="560" height="315" src="https://www.youtube.com/embed/oqCVNue0uL0" frameBorder="0" allowFullScreen></iframe>
-    #<iframe src="https://player.vimeo.com/video/148146653?title=0&byline=0&portrait=0" width="600" height="337" frameBorder="0" allowFullScreen>
-    #</iframe>
+SMC_Commercial = rclass
+    render : ->
+        return <iframe width="560" height="315" src="https://www.youtube.com/embed/oqCVNue0uL0" frameBorder="0" allowFullScreen></iframe>
+        #<iframe src="https://player.vimeo.com/video/148146653?title=0&byline=0&portrait=0" width="600" height="337" frameBorder="0" allowFullScreen>
+        #</iframe>
 
 LandingPageContent = rclass
     displayName : 'LandingPageContent'
@@ -411,7 +411,7 @@ example_image_style =
     borderRadius : '3px'
     padding      : '5px'
     background   : 'white'
-    height       : '236px'
+    width        : '100%'
 
 ExampleBox = rclass
     displayName : "ExampleBox"
@@ -455,6 +455,12 @@ exports.LandingPage = rclass
         has_account : rtypes.bool
 
     render : ->
+        setInterval ( ->
+            $('.tab-pane iframe').each (index, element) =>
+                cw = $(element).width()
+                cw *= .56
+                $(element).css({'height':cw+'px'})
+        ), 1000
         if not @props.remember_me
             reset_key = reset_password_key()
             <div style={margin: UNIT}>
@@ -512,18 +518,72 @@ exports.LandingPage = rclass
                                   display:'inline-block',\
                                   position:"relative",\
                                   color:"white",\
-                                  paddingRight:UNIT}>Collaborative<br/>Computational<br/>Mathematics</div>
+                                  paddingRight:UNIT}>Collaborative<br/>Interactive<br/>Math  Coding</div>
                 </Row>
                 <Row>
-                    <div className="hidden-xs" style={padding: "#{UNIT}px"}>
+                    <div className="hidden-xs" style={textAlign: 'center', padding: "#{UNIT}px"}>
                         <SiteDescription style={color:'#666', fontSize:"#{UNIT}px"} />
                     </div>
                 </Row>
-                <Row>
-                    <Col sm=7 className="hidden-xs" style=marginTop:'10px'>
-                        <SMC_Commercial />
+                <Row style={marginLeft:0}>
+                    <Col sm=8 className="hidden-xs landing-page-tabs" style={marginLeft:0}>
+                        <Tabs style={marginLeft:0} defaultActiveKey={1} position="left" tabWidth={3} className="landing-page-tabs">
+                            <Tab eventKey={1} title="Course management">
+                                <iframe src="https://www.youtube.com/embed/oqCVNue0uL0" frameBorder="0" allowFullScreen></iframe>
+                                <p style={fontSize:'1.5em',marginBottom:0,marginTop:10,textAlign:'center'}>UCLA is the leading adopter of SageMathCloud.</p>
+                            </Tab>
+                            <Tab eventKey={2} title="Sage Worksheets">
+                                <a href="http://sagemath.org" target="_blank">SageMath</a> is math software using the Python programming language.
+                            </Tab>
+                            <Tab eventKey={3} title="Jupyter Notebooks">
+                                SageMathCloud supports Jupyter Notebooks with live multi-person editing and course management. You can publish your notebooks.
+                                <p>Bultin Jupyter kernels:
+                                    <ul>
+                                        <li>sagemath</li>
+                                        <li>anaconda3</li>
+                                        <li>bash</li>
+                                        <li>ir</li>
+                                        <li>julia-0.4</li>
+                                        <li>octave</li>
+                                        <li>python2</li>
+                                        <li>python2-ubuntu</li>
+                                        <li>python3</li>
+                                        <li>sage-develop</li>
+                                        <li>spark-anaconda</li>
+                                        <li>spark-sagemath</li>
+                                    </ul></p>
+                            </Tab>
+                            <Tab eventKey={4} title="Terminal access">
+                                SageMathCloud projects run on Ubuntu. Users can create terminals or SSH into their projects.
+                            </Tab>
+                            <Tab eventKey={5} title="LaTeX editor">
+                                
+                            </Tab>
+                            <Tab eventKey={6} title="Bultin software">
+                                <ul>
+                                    <li>R</li>
+                                    <li>Juila</li>
+                                    <li>Sage (see the <a href="http://www.sagemath.org/links-components.html">software distrubuted with Sage</a>) and Python 2.X & 3.X and Cython</li>
+                                    
+                                    <li>Java, C, C++</li>
+                                </ul>
+                            </Tab>
+                            <Tab eventKey={7} title="Student experience">
+                                <iframe src="https://www.youtube.com/embed/z0GsGdUfSSA" frameBorder="0" allowFullScreen></iframe>
+                            </Tab>
+                            <Tab eventKey={8} title="Fair pricing">
+                                <Row className="small">
+                                    <AddSubscription show_only={true} />
+                                    <br/>
+                                    <FAQ/>
+                                </Row>
+                            </Tab>
+                            <Tab eventKey={9} title="Stellar support">
+                                <p>SageMathCloud{"'"}s support team responds on average in 1.3 hours, 25.8 hours shorter than the average for the education industry on Zendesk. 44.5% of support issues are resolved on the first reply. SageMathCloud support helps with SMC issues, install software even for free users, and reports issues and feature requests on behalf of users.</p>
+                            </Tab>
+                        </Tabs>
                     </Col>
-                    <Col sm=5>
+                    <Col sm=4>
                         <SignUp actions={@props.actions}
                                  sign_up_error={@props.sign_up_error}
                                  strategies={@props.strategies}
@@ -532,12 +592,6 @@ exports.LandingPage = rclass
                                  has_account={@props.has_account} />
                     </Col>
                 </Row>
-                <Row>
-                    <Col sm=12 className='hidden-xs'>
-                        <LandingPageContent />
-                    </Col>
-                </Row>
-                <SagePreview />
                 <Footer/>
             </div>
         else
